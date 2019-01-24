@@ -458,33 +458,156 @@ def expected(interfacename):
 
     click.echo(tabulate(body, header))
 
+#############################################################################
+# Transceiver helper functions to handle eeprom and dom and global variables 
+qsfp_data_map = {'modelname': 'Vendor PN', 'vendor_oui': 'Vendor OUI',
+                 'vendor_date': 'Vendor Date Code(YYYY-MM-DD Lot)',
+                 'manufacturename': 'Vendor Name',
+                 'hardwarerev': 'Vendor Rev', 'serialnum': 'Vendor SN',
+                 'type': 'Identifier', 'ext_identifier': 'Extended Identifier',
+                 'ext_rateselect_compliance': 'Extended RateSelect Compliance',
+                 'cable_length': 'cable_length', 'cable_type': 'cable_type',
+                 'nominal_bit_rate': 'Nominal Bit Rate(100Mbs)',
+                 'specification_compliance':'Specification compliance',
+                 'encoding': 'Encoding', 'Connector': 'Connector' 
+                 }
+
+sfp_dom_channel_monitor_map = {'rx1power': 'RXPower', 'tx1bias': 'TXBias', 'tx1power': 'TXPower'}
+
+qsfp_dom_channel_monitor_map = {'rx1power': 'RX1Power', 'rx2power': 'RX2Power',
+                                'rx3power': 'RX3Power', 'rx4power': 'RX4Power',
+                                'tx1bias': 'TX1Bias', 'tx2bias': 'TX2Bias',
+                                'tx3bias': 'TX3Bias', 'tx4bias': 'TX4Bias',
+                                'tx1power': 'TX1Power', 'tx2power': 'TX2Power',
+                                'tx3power': 'TX3Power', 'tx4power': 'TX4Power'}
+
+dom_module_monitor_map = {'temperature': 'Temperature', 'voltage': 'Vcc'}
+
+dom_value_unit_map = {'rx1power': 'dBm', 'rx2power': 'dBm',
+                      'rx3power': 'dBm', 'rx4power': 'dBm',
+                      'tx1bias': 'mA', 'tx2bias': 'mA',
+                      'tx3bias': 'mA', 'tx4bias': 'mA',
+                      'tx1power': 'dBm', 'tx2power': 'dBm',
+                      'tx3power': 'dBm', 'tx4power': 'dBm',
+                      'temperature': 'C', 'voltage': 'Volts'}
+
+# Convert channel monitor values to cli output string
+def convert_channel_monitor_value_to_output_string(sorted_key_table, dom_info_dict, channel_monitor_map):
+    out_put=''
+    ident = '        '
+    for key in sorted_key_table:
+        if dom_info_dict[key] != 'N/A':
+            if dom_info_dict[key] == 'Unknown':
+                out_put = out_put + ident + ident + channel_monitor_map[key] + ': ' + dom_info_dict[key] + '\n'
+            else:
+                out_put = out_put + ident + ident + channel_monitor_map[key] + ': ' + dom_info_dict[key] + dom_value_unit_map[key] + '\n'
+    return out_put
+ 
+# Convert dom sensor info in DB to cli output string
+def convert_dom_to_output_string(sfp_type, dom_info_dict):
+    ident = '        '
+    out_put_dom = ''
+    if sfp_type.startswith('QSFP'):
+        out_put_dom = out_put_dom + ident + 'ChannelMonitorValues' + ': ' + '\n'
+        sorted_dom_channel_monitor_info_key_table = natsorted(qsfp_dom_channel_monitor_map)
+        out_put_channel = convert_channel_monitor_value_to_output_string(sorted_dom_channel_monitor_info_key_table, dom_info_dict, qsfp_dom_channel_monitor_map)
+        out_put_dom = out_put_dom + out_put_channel
+
+        out_put_dom = out_put_dom + ident + 'ModuleMonitorValues' + ': ' + '\n'
+
+    else:
+        out_put_dom = out_put_dom + ident + 'MonitorData' + ': ' + '\n'
+        sorted_dom_channel_monitor_info_key_table = natsorted(sfp_dom_channel_monitor_map)
+        out_put_channel = convert_channel_monitor_value_to_output_string(sorted_dom_channel_monitor_info_key_table, dom_info_dict, sfp_dom_channel_monitor_map)
+        out_put_dom = out_put_dom + out_put_channel
+
+    sorted_dom_module_monitor_info_key_table = natsorted(dom_module_monitor_map)
+    out_put_module = convert_channel_monitor_value_to_output_string(sorted_dom_module_monitor_info_key_table, dom_info_dict, dom_module_monitor_map)
+    out_put_dom = out_put_dom + out_put_module
+
+    return out_put_dom
+
+# Convert sfp info in DB to cli output string
+def convert_sfp_info_to_output_string(sfp_info_dict):
+    ident = '        '
+    out_put = ''
+    sorted_sfp_info_key_table = natsorted(sfp_info_dict)
+
+    for key in sorted_sfp_info_key_table:
+        if key == 'cable_type':
+            out_put = out_put + ident + sfp_info_dict['cable_type'] + ': ' + sfp_info_dict['cable_length'] + '\n'
+        elif key == 'cable_length':
+            pass
+        elif key == 'specification_compliance':
+            spefic_compliance_dict = eval(sfp_info_dict['specification_compliance'])
+            sorted_compliance_key_table = natsorted(spefic_compliance_dict)
+            out_put = out_put + ident + qsfp_data_map['specification_compliance'] + ': ' + '\n'
+            for compliance_key in sorted_compliance_key_table:
+                out_put = out_put + ident + ident + compliance_key + ': ' + spefic_compliance_dict[compliance_key] + '\n'
+        else:
+            out_put = out_put + ident + qsfp_data_map[key] + ': ' + sfp_info_dict[key] + '\n'
+
+    return out_put
+
+# Convert sfp info and dom sensor info in DB to cli output string
+def convert_interface_sfp_info_to_cli_output_string(state_db, interface_name, dump_dom):
+    out_put = ''
+    sfp_info_dict = state_db.get_all(state_db.STATE_DB, 'TRANSCEIVER_INFO|{}'.format(interface_name))
+    out_put = interface_name + ': ' + 'SFP EEPROM detected' + '\n'
+    sfp_info_output = convert_sfp_info_to_output_string(sfp_info_dict)
+    out_put = out_put + sfp_info_output
+
+    if dump_dom:
+        sfp_type = sfp_info_dict['type']
+        dom_info_dict = state_db.get_all(state_db.STATE_DB, 'TRANSCEIVER_DOM_SENSOR|{}'.format(interface_name))
+        dom_output = convert_dom_to_output_string(sfp_type, dom_info_dict)
+        out_put = out_put + dom_output
+
+    return out_put
+#########################################################################
 
 @interfaces.group(cls=AliasedGroup, default_if_no_args=False)
 def transceiver():
     """Show SFP Transceiver information"""
     pass
 
-
 @transceiver.command()
 @click.argument('interfacename', required=False)
 @click.option('-d', '--dom', 'dump_dom', is_flag=True, help="Also display Digital Optical Monitoring (DOM) data")
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def eeprom(interfacename, dump_dom, verbose):
-    """Show interface transceiver EEPROM information"""
+    """Show interface transceiver EEPROM information"""   
+    out_put = ''
 
-    cmd = "sudo sfputil show eeprom"
+    adb = SonicV2Connector(host="127.0.0.1")
+    adb.connect(adb.APPL_DB)
 
-    if dump_dom:
-        cmd += " --dom"
+    sdb = SonicV2Connector(host="127.0.0.1")
+    sdb.connect(sdb.STATE_DB)
 
     if interfacename is not None:
         if get_interface_mode() == "alias":
             interfacename = iface_alias_converter.alias_to_name(interfacename)
+        presence = sdb.exists(sdb.STATE_DB, 'TRANSCEIVER_INFO|{}'.format(interfacename))
+        if presence:
+            out_put = convert_interface_sfp_info_to_cli_output_string(sdb, interfacename, dump_dom)
+        else:
+           out_put = out_put + interfacename + ': ' + 'SFP EEPROM Not detected' + '\n' 
+    else:
+        port_table_keys = adb.keys(adb.APPL_DB, "PORT_TABLE:*")
+        sorted_table_keys = natsorted(port_table_keys)
+        for i in sorted_table_keys:
+            interface = re.split(':', i, maxsplit=1)[-1].strip()
+            if interface and interface.startswith('Ethernet'):
+                presence = sdb.exists(sdb.STATE_DB, 'TRANSCEIVER_INFO|{}'.format(interface))
+                if presence:
+                    out_put = out_put + convert_interface_sfp_info_to_cli_output_string(sdb, interface, dump_dom)
+                else:
+                   out_put = out_put + interface + ': ' + 'SFP EEPROM Not detected' + '\n' 
 
-        cmd += " -p {}".format(interfacename)
+            out_put = out_put + '\n' 
 
-    run_command(cmd, display_cmd=verbose)
-
+    print out_put
 
 @transceiver.command()
 @click.argument('interfacename', required=False)
@@ -507,17 +630,36 @@ def lpmode(interfacename, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def presence(interfacename, verbose):
     """Show interface transceiver presence"""
+    adb = SonicV2Connector(host="127.0.0.1")
+    adb.connect(adb.APPL_DB)
 
-    cmd = "sudo sfputil show presence"
+    sdb = SonicV2Connector(host="127.0.0.1")
+    sdb.connect(sdb.STATE_DB)
+    
+    port_table = []
+    header = ['Port', 'Presence']
 
     if interfacename is not None:
         if get_interface_mode() == "alias":
             interfacename = iface_alias_converter.alias_to_name(interfacename)
-
-        cmd += " -p {}".format(interfacename)
-
-    run_command(cmd, display_cmd=verbose)
-
+        presence = sdb.exists(sdb.STATE_DB, 'TRANSCEIVER_INFO|{}'.format(interfacename))
+        if presence:
+            port_table.append((interfacename, 'Present'))
+        else:
+            port_table.append((interfacename, 'Not present'))
+    else:
+        port_table_keys = adb.keys(adb.APPL_DB, "PORT_TABLE:*")
+        for i in port_table_keys:
+            key = re.split(':', i, maxsplit=1)[-1].strip()
+            if key and key.startswith('Ethernet'):
+                presence = sdb.exists(sdb.STATE_DB, 'TRANSCEIVER_INFO|{}'.format(key))
+                if presence:
+                    port_table.append((key,'Present'))
+                else:
+                    port_table.append((key,'Not present'))
+    
+    sorted_port_table = natsorted(port_table)
+    click.echo(tabulate(sorted_port_table, header))
 
 @interfaces.command()
 @click.argument('interfacename', required=False)
