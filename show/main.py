@@ -79,7 +79,7 @@ def get_routing_stack():
 
     try:
         stdout = subprocess.check_output(command, shell=True, timeout=COMMAND_TIMEOUT)
-        result = stdout.rstrip('\n')
+        result = stdout.decode("utf-8").rstrip('\n')
     except Exception as err:
         click.echo('Failed to get routing stack: {}'.format(err), err=True)
 
