@@ -600,12 +600,12 @@ if [[ "$sonic_asic_type" == "mellanox" ]]; then
 
     debug "Prepare MLNX ASIC to ${REBOOT_TYPE}: install new FW if required"
 
-    ${MLNX_FW_UPGRADE_SCRIPT} --upgrade
-    MLNX_EXIT_CODE="$?"
-    if [[ "${MLNX_EXIT_CODE}" != "${MLNX_EXIT_SUCCESS}" ]]; then
-        error "Failed to burn MLNX FW: errno=${MLNX_EXIT_CODE}"
-        exit "${MLNX_EXIT_FW_ERROR}"
-    fi
+#    ${MLNX_FW_UPGRADE_SCRIPT} --upgrade
+#    MLNX_EXIT_CODE="$?"
+#    if [[ "${MLNX_EXIT_CODE}" != "${MLNX_EXIT_SUCCESS}" ]]; then
+#        error "Failed to burn MLNX FW: errno=${MLNX_EXIT_CODE}"
+#        exit "${MLNX_EXIT_FW_ERROR}"
+#    fi
 fi
 
 
