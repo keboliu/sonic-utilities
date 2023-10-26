@@ -936,7 +936,6 @@ def convert_byte_to_valid_ascii_char(byte):
     else:
         return chr(byte)
 
-
 def hexdump(indent, data, mem_address, start_newline=True):
     size = len(data)
     offset = 0
@@ -965,7 +964,6 @@ def hexdump(indent, data, mem_address, start_newline=True):
         offset += 16
         mem_address += 16
     return '\n'.join(lines)
-
 
 # 'presence' subcommand
 @show.command()
@@ -1665,6 +1663,98 @@ def unlock(port_name, password):
         click.echo("CDB: Host password accepted")
     else:
         click.echo("CDB: Host password NOT accepted! status = {}".format(status))
+
+
+# 'read-eeprom' subcommand
+@cli.command()
+@click.argument('port_name', metavar='<port_name>', required=True)
+@click.argument('page', metavar='<page>', type=click.INT, required=True)
+@click.argument('offset', metavar='<offset>', type=click.INT, required=True)
+@click.argument('size', metavar='<size>', type=click.INT, required=True)
+@click.option('--no-format', is_flag=True, help="Display non formatted data")
+@click.option('--wire-addr', help="Wire address of sff8472")
+def read_eeprom(port_name, page, offset, size, no_format, wire_addr):
+    """Read SFP EEPROM data"""
+    if platform_sfputil.is_logical_port(port_name) == 0:
+        click.echo("Error: invalid port {}".format(port_name))
+        print_all_valid_port_values()
+        sys.exit(ERROR_INVALID_PORT)
+        
+    if is_port_type_rj45(port_name):
+        click.echo("This functionality is not applicable for RJ45 port {}.".format(port_name))
+        sys.exit(EXIT_FAIL)
+
+    physical_port = logical_port_to_physical_port_index(port_name)
+    sfp = platform_chassis.get_sfp(physical_port)
+    if not sfp.get_presence():
+        click.echo("{}: SFP EEPROM not detected\n".format(port_name))
+        sys.exit(EXIT_FAIL)
+
+    try:
+        data = sfp.read_eeprom_by_page(page, offset, size, wire_addr)
+        if data is None:
+            click.echo("Error: Failed to read EEPROM!")
+            sys.exit(ERROR_NOT_IMPLEMENTED)
+        if no_format:
+            click.echo(''.join('{:02x}'.format(x) for x in data))
+        else:
+            click.echo(hexdump('', data, offset))
+    except NotImplementedError:
+        click.echo("This functionality is currently not implemented for this platform")
+        sys.exit(ERROR_NOT_IMPLEMENTED)
+    except ValueError as e:
+        click.echo("Error: {}".format(e))
+        sys.exit(EXIT_FAIL)
+
+
+# 'write-eeprom' subcommand
+@cli.command()
+@click.argument('port_name', metavar='<port_name>', required=True)
+@click.argument('page', metavar='<page>', type=click.INT, required=True)
+@click.argument('offset', metavar='<offset>', type=click.INT, required=True)
+@click.argument('data', metavar='<data>', required=True)
+@click.option('--wire-addr', help="Wire address of sff8472")
+@click.option('--verify', is_flag=True, help="Verify the data by reading back")
+def write_eeprom(port_name, page, offset, data, wire_addr, verify):
+    """Write SFP EEPROM data"""
+    if platform_sfputil.is_logical_port(port_name) == 0:
+        click.echo("Error: invalid port {}".format(port_name))
+        print_all_valid_port_values()
+        sys.exit(ERROR_INVALID_PORT)
+
+    if is_port_type_rj45(port_name):
+        click.echo("This functionality is not applicable for RJ45 port {}.".format(port_name))
+        sys.exit(EXIT_FAIL)
+
+    physical_port = logical_port_to_physical_port_index(port_name)
+    sfp = platform_chassis.get_sfp(physical_port)
+    if not sfp.get_presence():
+        click.echo("{}: SFP EEPROM not detected\n".format(port_name))
+        sys.exit(EXIT_FAIL)
+
+    try:
+        bytes = bytearray.fromhex(data)
+    except ValueError:
+        click.echo("Error: Data must be a hex string of even length!")
+        sys.exit(EXIT_FAIL)
+
+    try:
+        success = sfp.write_eeprom_by_page(page, offset, bytes, wire_addr)
+        if not success:
+            click.echo("Error: Failed to write EEPROM!")
+            sys.exit(ERROR_NOT_IMPLEMENTED)
+        if verify:
+            read_data = sfp.read_eeprom_by_page(page, offset, len(bytes), wire_addr)
+            if read_data != bytes:
+                click.echo(f"Error: Write data failed! Write: {''.join('{:02x}'.format(x) for x in bytes)}, read: {''.join('{:02x}'.format(x) for x in read_data)}")
+                sys.exit(EXIT_FAIL)
+    except NotImplementedError:
+        click.echo("This functionality is currently not implemented for this platform")
+        sys.exit(ERROR_NOT_IMPLEMENTED)
+    except ValueError as e:
+        click.echo("Error: {}".format(e))
+        sys.exit(EXIT_FAIL)
+
 
 # 'version' subcommand
 @cli.command()
