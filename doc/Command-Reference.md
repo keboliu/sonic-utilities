@@ -204,6 +204,8 @@
   * [MACsec clear command](#macsec-clear-command)
 * [SFP Utilities Commands](#sfp-utilities-commands)
   * [SFP Utilities show commands](#sfp-utilities-show-commands)
+  * [SFP Utilities read command](#sfp-utilities-read-command)
+  * [SFP Utilities write command](#sfp-utilities-write-command)
 * [Static DNS Commands](#static-dns-commands)
   * [Static DNS config command](#static-dns-config-command)
   * [Static DNS show command](#static-dns-show-command)
@@ -12996,6 +12998,63 @@ EEPROM hexdump for port Ethernet8
         000000e0 33 30 33 33 30 4b 34 33  34 31 30 44 00 00 00 00 |30330K43410D....|
         000000f0 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00 |................|
 ...
+```
+This sub-section explains the list of commands available for SFP utilities feature.
+
+# SFP Utilities read command
+
+- Read SFP EEPROM data
+
+```
+admin@sonic:~$ sfputil read-eeprom --help
+Usage: sfputil read-eeprom [OPTIONS] <port_name> <page> <offset> <size>
+  Read SFP EEPROM data
+Options:
+  --no-format             Display non formatted data.
+  --wire-addr             Wire address of sff8472.
+  --help                  Show this
+```
+
+```
+admin@sonic:~$ sfputil read-eeprom Ethernet0 0 100 2
+        00000064 4a 44                                            |..|
+
+admin@sonic:~$ sfputil read-eeprom Ethernet0 0 0 32
+        00000000 11 08 06 00 00 00 00 00  00 00 00 00 00 00 00 00 |................|
+        00000010 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00 |................|
+
+admin@sonic:~$ sfputil read-eeprom Ethernet0 0 100 2 --no-format
+4a44
+```
+
+# SFP Utilities write command
+
+- Write SFP EEPROM data
+
+```
+admin@sonic:~$ sfputil write-eeprom --help
+Usage: sfputil write-eeprom [OPTIONS] <port> <page> <offset> <data>
+
+  Write SFP EEPROM data
+
+Options:
+  --wire-addr             Wire address of sff8472.
+  --verify                Verify the data by reading back.
+  --help                  Show this message and exit.
+```
+
+- Write success
+```
+admin@sonic:~$ sfputil write-eeprom Ethernet0 0 100 4a44
+
+admin@sonic:~$ sfputil write-eeprom Etherent0 0 100 0000 --verify
+
+```
+
+- Write fail
+```
+admin@sonic:~$ sfputil write-eeprom Etherent0 0 100 4a44 --verify
+Error: Write data failed! Write: 4a44, read: 0000.
 ```
 
 Go Back To [Beginning of the document](#) or [Beginning of this section](#sfp-utilities-commands)
