@@ -697,7 +697,7 @@ def eeprom(port, dump_dom, namespace):
 # 'eeprom-hexdump' subcommand
 @show.command()
 @click.option('-p', '--port', metavar='<port_name>', help="Display SFP EEPROM hexdump for port <port_name>")
-@click.option('-n', '--page', metavar='<page_number>', type=click.IntRange(0, MAX_EEPROM_PAGE), help="Display SFP EEEPROM hexdump for <page_number_in_hex>")
+@click.option('-n', '--page', metavar='<page_number>', help="Display SFP EEEPROM hexdump for <page_number_in_hex>")
 def eeprom_hexdump(port, page):
     """Display EEPROM hexdump of SFP transceiver(s)"""
     if port:
@@ -709,6 +709,9 @@ def eeprom_hexdump(port, page):
     else:
         if page is not None:
             page = int(str(page), base=16)
+            if page > MAX_EEPROM_PAGE:
+                click.echo("Error, page number {} larger than max page number 255.".format(page))
+                sys.exit(EXIT_FAIL)
         logical_port_list = natsorted(platform_sfputil.logical)
         lines = []
         for logical_port_name in logical_port_list:
@@ -1717,7 +1720,7 @@ def target(port_name, target):
 # 'read-eeprom' subcommand
 @cli.command()
 @click.option('-p', '--port', metavar='<logical_port_name>', help="Logical port name", required=True)
-@click.option('-n', '--page', metavar='<page>', type=click.IntRange(0, MAX_EEPROM_PAGE), help="EEPROM page number in hex", required=True)
+@click.option('-n', '--page', metavar='<page>', help="EEPROM page number in hex", required=True)
 @click.option('-o', '--offset', metavar='<offset>', type=click.IntRange(0, MAX_EEPROM_OFFSET), help="EEPROM offset within the page", required=True)
 @click.option('-s', '--size', metavar='<size>', type=click.IntRange(1, MAX_EEPROM_OFFSET + 1), help="Size of byte to be read", required=True)
 @click.option('--no-format', is_flag=True, help="Display non formatted data")
@@ -1747,6 +1750,9 @@ def read_eeprom(port, page, offset, size, no_format, wire_addr):
             click.echo('Error: SFP EEPROM not detected!')
         if page is not None:
             page = int(str(page), base=16)
+            if page > MAX_EEPROM_PAGE:
+                click.echo("Error, page number {} larger than max page number 255.".format(page))
+                sys.exit(EXIT_FAIL)
         else:
             click.echo('Error: Page number is not provided!')
             sys.exit(EXIT_FAIL)
@@ -1770,7 +1776,7 @@ def read_eeprom(port, page, offset, size, no_format, wire_addr):
 # 'write-eeprom' subcommand
 @cli.command()
 @click.option('-p', '--port', metavar='<logical_port_name>', help="Logical port name", required=True)
-@click.option('-n', '--page', metavar='<page>', type=click.IntRange(0, MAX_EEPROM_PAGE), help="EEPROM page number in hex", required=True)
+@click.option('-n', '--page', metavar='<page>', help="EEPROM page number in hex", required=True)
 @click.option('-o', '--offset', metavar='<offset>', type=click.IntRange(0, MAX_EEPROM_OFFSET), help="EEPROM offset within the page", required=True)
 @click.option('-d', '--data', metavar='<data>', help="Hex string EEPROM data", required=True)
 @click.option('--wire-addr', help="Wire address of sff8472")
@@ -1806,6 +1812,9 @@ def write_eeprom(port, page, offset, data, wire_addr, verify):
             sys.exit(EXIT_FAIL)
         if page is not None:
             page = int(str(page), base=16)
+            if page > MAX_EEPROM_PAGE:
+                click.echo("Error, page number {} larger than max page number 255.".format(page))
+                sys.exit(EXIT_FAIL)
         else:
             click.echo('Error: Page number is not provided!')
             sys.exit(EXIT_FAIL)
