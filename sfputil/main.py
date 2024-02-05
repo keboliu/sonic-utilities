@@ -703,6 +703,8 @@ def eeprom_hexdump(port, page):
     if port:
         if page is None:
             page = 0
+        else:
+            page = validate_eeprom_page(page)
         return_code, output = eeprom_hexdump_single_port(port, int(str(page), base=16))
         click.echo(output)
         sys.exit(return_code)
@@ -734,7 +736,7 @@ def validate_eeprom_page(page):
         click.echo('Please enter a numeric page number')
         sys.exit(ERROR_NOT_IMPLEMENTED)
     if page < 0 or page > MAX_EEPROM_PAGE:
-        click.echo(f'Invalid page {page}')
+        click.echo(f'Error: Invalid page number {page}')
         sys.exit(ERROR_INVALID_PAGE)
     return page
 
