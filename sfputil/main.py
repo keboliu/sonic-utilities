@@ -724,26 +724,6 @@ def eeprom_hexdump(port, page):
         click.echo('\n'.join(lines))
 
 
-def validate_eeprom_page(page):
-    """
-    Validate input page module EEPROM
-    Args:
-        page: str page input by user
-
-    Returns:
-        int page
-    """
-    try:
-        page = int(page, base=16)
-    except ValueError:
-        click.echo('Please enter a numeric page number')
-        sys.exit(ERROR_NOT_IMPLEMENTED)
-    if page < 0 or page > 255:
-        click.echo(f'Invalid page {page}')
-        sys.exit(ERROR_INVALID_PAGE)
-    return page
-
-
 def eeprom_hexdump_single_port(logical_port_name, page):
     """
     Dump EEPROM for a single logical port in hex format.
@@ -1750,8 +1730,8 @@ def read_eeprom(port, page, offset, size, no_format, wire_addr):
             click.echo('Error: SFP EEPROM not detected!')
         if page is not None:
             page = int(str(page), base=16)
-            if page > MAX_EEPROM_PAGE:
-                click.echo("Error, page number {} larger than max page number 255.".format(page))
+            if page > MAX_EEPROM_PAGE or page < 0:
+                click.echo("Error, page number {} is invalid, must be in (0, 255).".format(page))
                 sys.exit(EXIT_FAIL)
         else:
             click.echo('Error: Page number is not provided!')
@@ -1812,8 +1792,8 @@ def write_eeprom(port, page, offset, data, wire_addr, verify):
             sys.exit(EXIT_FAIL)
         if page is not None:
             page = int(str(page), base=16)
-            if page > MAX_EEPROM_PAGE:
-                click.echo("Error, page number {} larger than max page number 255.".format(page))
+            if page > MAX_EEPROM_PAGE or page < 0:
+                click.echo("Error, page number {} is invalid, must be in (0, 255).".format(page))
                 sys.exit(EXIT_FAIL)
         else:
             click.echo('Error: Page number is not provided!')
